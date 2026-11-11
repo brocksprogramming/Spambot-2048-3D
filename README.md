@@ -70,7 +70,7 @@ Spambot-2048-3D/
 
 ## License
 
-This project does not currently include a formal license file. If you plan to redistribute or modify it, confirm the relevant rights and attribution before publishing or sharing it beyond your local environment.
+Covered under GPL-3 License
 
 ## Credits
 
