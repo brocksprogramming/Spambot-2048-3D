@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Spambot 2048 3D",
+  "version": "3.0.0",
+  "description": "A 3D cyber-runner game where your email address dodges incoming spam down the inbox highway.",
+  "action": {
+    "default_title": "Spambot 2048 3D"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/spambot_icon_48x48.png",
+    "48": "icons/spambot_icon_48x48.png",
+    "128": "icons/spambot_icon_128x128.png"
+  }
+}

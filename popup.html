@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spambot 2048 — 3D Edition</title>
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --green:       #00e664;
+    --green-dim:   rgba(0,180,80,0.55);
+    --green-near:  rgba(0,230,100,0.85);
+    --cyan:        #00ffff;
+    --yellow:      #ffff00;
+    --red:         #ff3333;
+    --bg:          #000000;
+    --font:        'Courier New', Courier, monospace;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--green);
+    font-family: var(--font);
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+  }
+
+  /* ── Screens ────────────────────────────────────────────────── */
+  .screen {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 18px;
+    padding: 32px;
+    z-index: 2;
+  }
+  .screen.active { display: flex; }
+
+  /* ── Start Screen ─────────────────────────────────────────────*/
+  #start-screen {
+    background: radial-gradient(circle at center, #001808 0%, #000000 85%);
+    text-align: center;
+  }
+  .title-art {
+    font-size: clamp(12px, 2.2vw, 20px);
+    color: var(--green);
+    line-height: 1.25;
+    text-shadow: 0 0 12px var(--green);
+    white-space: pre;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: clamp(11px, 1.4vw, 15px);
+    color: var(--cyan);
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+    text-shadow: 0 0 8px var(--cyan);
+  }
+  .label {
+    font-size: 13px;
+    color: var(--green-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  #email-input {
+    background: rgba(0, 20, 10, 0.8);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--font);
+    font-size: 18px;
+    padding: 10px 16px;
+    width: min(360px, 90vw);
+    outline: none;
+    caret-color: var(--green);
+    box-shadow: 0 0 8px rgba(0,230,100,0.3);
+    text-align: center;
+  }
+  #email-input::placeholder { color: rgba(0,230,100,0.3); }
+  #email-input:focus { box-shadow: 0 0 14px rgba(0,230,100,0.6); }
+
+  .btn {
+    background: rgba(0, 230, 100, 0.05);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--font);
+    font-size: 16px;
+    padding: 12px 36px;
+    cursor: pointer;
+    letter-spacing: 0.12em;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    width: min(360px, 90vw);
+    text-align: center;
+  }
+  .btn:hover, .btn:focus {
+    background: rgba(0,230,100,0.16);
+    box-shadow: 0 0 16px rgba(0,230,100,0.4);
+    outline: none;
+    transform: translateY(-1px);
+  }
+  .btn.secondary {
+    border-color: var(--green-dim);
+    color: var(--green-dim);
+    font-size: 13px;
+    padding: 8px 24px;
+  }
+  .instructions {
+    font-size: clamp(11px, 1.2vw, 13px);
+    color: var(--green-dim);
+    line-height: 1.75;
+    text-align: left;
+    width: min(360px, 90vw);
+    border-left: 2px solid var(--cyan);
+    padding-left: 14px;
+    background: rgba(0, 255, 255, 0.03);
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .instructions span { color: var(--cyan); font-weight: bold; }
+
+  /* ── Game Screen ──────────────────────────────────────────────*/
+  #game-screen {
+    padding: 0;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+  #game-canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* ── Game Over Screen ─────────────────────────────────────────*/
+  #gameover-screen {
+    background: radial-gradient(circle at center, rgba(35, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.96) 85%);
+    text-align: center;
+    gap: 16px;
+  }
+  .go-title {
+    font-size: clamp(22px, 4vw, 42px);
+    color: var(--red);
+    text-shadow: 0 0 20px var(--red);
+    letter-spacing: 0.15em;
+  }
+  .go-art {
+    font-size: clamp(10px, 1.5vw, 14px);
+    color: var(--red);
+    white-space: pre;
+    opacity: 0.8;
+    line-height: 1.2;
+  }
+  .final-score {
+    font-size: clamp(18px, 3vw, 32px);
+    color: var(--yellow);
+    letter-spacing: 0.1em;
+  }
+  .high-score-note {
+    font-size: 14px;
+    color: var(--cyan);
+    min-height: 20px;
+  }
+
+  /* ── Flash & Scanlines Overlays ───────────────────────────────*/
+  #flash-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.05s;
+    z-index: 8;
+  }
+  #scanlines {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0, 255, 100, 0.03) 3px,
+      rgba(0, 255, 100, 0.03) 5px
+    );
+    z-index: 10;
+  }
+
+  /* ── Mobile Controls ──────────────────────────────────────────*/
+  #mobile-controls {
+    display: none;
+    position: absolute;
+    bottom: 18px;
+    left: 0; right: 0;
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 12px;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .ctrl-btn {
+    pointer-events: all;
+    background: rgba(0, 20, 10, 0.75);
+    border: 1px solid rgba(0, 230, 100, 0.45);
+    color: var(--green);
+    font-family: var(--font);
+    font-size: 12px;
+    padding: 14px 14px;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  .ctrl-btn:active { background: rgba(0, 230, 100, 0.3); }
+
+  @media (pointer: coarse) {
+    #mobile-controls { display: flex; }
+  }
+</style>
+</head>
+<body>
+
+<div id="scanlines"></div>
+<div id="flash-overlay"></div>
+
+<!-- ══════════════════ START SCREEN ══════════════════ -->
+<div id="start-screen" class="screen active">
+  <div class="title-art" id="title-art"></div>
+  <div class="subtitle">// 3D CYBER-RUNNER FOR THE TERMINALLY UNSUBSCRIBED //</div>
+
+  <div class="label">&gt; ENTER YOUR EMAIL ADDRESS</div>
+  <input id="email-input" type="email" placeholder="you@domain.com" maxlength="32" autocomplete="off" spellcheck="false">
+
+  <button class="btn" id="start-btn">&gt; JACK INTO THE INBOX _</button>
+
+  <div class="instructions">
+    <span>A / D</span> or <span>← / →</span> &nbsp;&nbsp;— Switch Lanes (Left / Right)<br>
+    <span>W / ↑ / SPACE</span> &nbsp;&nbsp;— Air Mail (Jump over low spam)<br>
+    <span>S / ↓ (HOLD)</span> &nbsp;&nbsp;&nbsp;— Snail Mail (Crawl under banners)<br>
+    <span>E / SHIFT / TAP</span> — Dead Letter (Phase through spam)
+  </div>
+
+  <button class="btn secondary" id="support-btn">♥ SUPPORT THE DEVELOPER</button>
+</div>
+
+<!-- ══════════════════ GAME SCREEN ══════════════════ -->
+<div id="game-screen" class="screen">
+  <canvas id="game-canvas"></canvas>
+  <div id="mobile-controls">
+    <button class="ctrl-btn" id="ctrl-left">◄ LEFT</button>
+    <button class="ctrl-btn" id="ctrl-snail">▼ CRAWL</button>
+    <button class="ctrl-btn" id="ctrl-dead">● PHASE</button>
+    <button class="ctrl-btn" id="ctrl-air">▲ JUMP</button>
+    <button class="ctrl-btn" id="ctrl-right">RIGHT ►</button>
+  </div>
+</div>
+
+<!-- ══════════════════ GAME OVER SCREEN ══════════════════ -->
+<div id="gameover-screen" class="screen">
+  <div class="go-art" id="go-art"></div>
+  <div class="go-title">// DELIVERY FAILED //</div>
+  <div class="final-score" id="final-score-display">Score: 0</div>
+  <div class="high-score-note" id="high-score-note"></div>
+  <button class="btn" id="retry-btn">&gt; RETRY CONNECTION _</button>
+  <button class="btn secondary" id="gameover-support-btn">♥ SUPPORT THE DEVELOPER</button>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
